@@ -9,17 +9,20 @@ import kotlin.test.assertTrue
 class LibraryTest {
     @Test fun someLibraryMethodReturnsTrue() {
         val lib = Library()
-        lib.inject(A::class.java, A::class.java)
-        lib.inject<AnyRequiresA>(AnyRequiresA::class.java, RequiresA::class.java)
+        lib.inject<IA, A>()
+        lib.inject<IRequiresA, RequiresA>()
+        // assertTrue(lib.provide<IRequiresA>() !== null)
     }
 }
 
 
-class A {
-    fun exists() {
-        println("A exists")
+interface IA {
+    fun exists()
+}
 
-        // return true
+class A : IA {
+    override fun exists() {
+        println("I exist")
     }
 }
 
@@ -27,29 +30,17 @@ interface IRequiresA {
     fun containsA()
 }
 
-class AnyRequiresA : IRequiresA {
-    val impl: IRequiresA
+class RequiresA : IRequiresA {
+    val a: IA
 
-    constructor(impl: IRequiresA) {
-        this.impl = impl
-    }
-
-    override fun containsA()
-    {
-        return this.impl.containsA();
-    }
-}
-
-class RequiresA : AnyRequiresA {
-    val a: A
-
-    constructor(arg: A) {
-        println("Constructing Requires A")
+    constructor(arg: IA) {
         this.a = arg
     }
 
     override fun containsA()
     {
-        return this.a.exists();
+        if (this.a != null) {
+            println("Contians A")
+        }
     }
 }

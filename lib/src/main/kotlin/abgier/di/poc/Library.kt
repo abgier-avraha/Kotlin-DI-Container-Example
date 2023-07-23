@@ -4,11 +4,11 @@
 package abgier.di.poc
 
 class Library {
-    private val services = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+    val services = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
 
-    // T should extend type or == type
-    fun <T>inject(service: java.lang.Class<T>, type: java.lang.Class<T>) {
-        val primaryConstructor = service.getConstructors()[0]
+    inline fun <reified T, reified S>inject() {
+        var serviceClass = S::class.java
+        val primaryConstructor = serviceClass.getConstructors()[0]
 
         val params = mutableListOf<Any>()
         for (param in primaryConstructor.getParameters()) {
@@ -18,10 +18,16 @@ class Library {
             }
         }
 
-        println("$service being injected with args $params")
-
+        println(serviceClass)
+        println(params)
         val instance = primaryConstructor.newInstance(*params.toTypedArray())
-        this.services.put(type as java.lang.Class<Any>, instance as java.lang.Object)
+        this.services.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+        return
+    }
+
+    inline fun <reified T>provide() : T {
+        val matchingService = this.services.get(T::class.java as java.lang.Class<Any>)
+        return matchingService as T
     }
 }
 

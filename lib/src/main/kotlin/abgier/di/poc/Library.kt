@@ -3,30 +3,39 @@
  */
 package abgier.di.poc
 
-class Library {
-    val services = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+// TODO: decorator for injecting from sharedDependencyInjectionContainer store
+// TODO: decorator param for injecting from different DependencyInjectionContainer
+
+val sharedDependencyInjectionContainer = DependencyInjectionContainer()
+
+class DependencyInjectionContainer {
+    val sharedServicesStore = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+
+    // TODO: inject transient and inject singletong
 
     inline fun <reified T, reified S>inject() {
         var serviceClass = S::class.java
+
+        // TODO: exception handling
         val primaryConstructor = serviceClass.getConstructors()[0]
 
         val params = mutableListOf<Any>()
         for (param in primaryConstructor.getParameters()) {
-            val matchingService = this.services.get(param.type)
+            val matchingService = this.sharedServicesStore.get(param.type)
             if (matchingService != null) {
                 params.add(matchingService)
             }
         }
 
-        println(serviceClass)
-        println(params)
+        // TODO: exception handling
         val instance = primaryConstructor.newInstance(*params.toTypedArray())
-        this.services.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+        this.sharedServicesStore.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return
     }
 
     inline fun <reified T>provide() : T {
-        val matchingService = this.services.get(T::class.java as java.lang.Class<Any>)
+        // TODO: exception handling
+        val matchingService = this.sharedServicesStore.get(T::class.java as java.lang.Class<Any>)
         return matchingService as T
     }
 }

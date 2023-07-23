@@ -6,41 +6,41 @@ package abgier.di.poc
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class LibraryTest {
-    @Test fun someLibraryMethodReturnsTrue() {
-        val lib = Library()
-        lib.inject<IA, A>()
-        lib.inject<IRequiresA, RequiresA>()
-        // assertTrue(lib.provide<IRequiresA>() !== null)
+class DependencyInjectionTest {
+    @Test fun containerInjectsAndProvides() {
+        sharedDependencyInjectionContainer.inject<IServiceA, ServiceA>()
+        sharedDependencyInjectionContainer.inject<IRequiresA, RequiresA>()
+
+        assertTrue(sharedDependencyInjectionContainer.provide<IServiceA>().exists())
+        assertTrue(sharedDependencyInjectionContainer.provide<IRequiresA>().containsA())
+
     }
 }
 
 
-interface IA {
-    fun exists()
+interface IServiceA {
+    fun exists(): Boolean
 }
 
-class A : IA {
-    override fun exists() {
-        println("I exist")
+class ServiceA : IServiceA {
+    override fun exists(): Boolean {
+        return true
     }
 }
 
 interface IRequiresA {
-    fun containsA()
+    fun containsA(): Boolean
 }
 
 class RequiresA : IRequiresA {
-    val a: IA
+    val a: IServiceA
 
-    constructor(arg: IA) {
+    constructor(arg: IServiceA) {
         this.a = arg
     }
 
-    override fun containsA()
+    override fun containsA(): Boolean
     {
-        if (this.a != null) {
-            println("Contians A")
-        }
+        return this.a != null
     }
 }

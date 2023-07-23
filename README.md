@@ -5,6 +5,8 @@
 ```kotlin
 sharedDependencyInjectionContainer.inject<IServiceA, ServiceA>()
 sharedDependencyInjectionContainer.inject<IRequiresA, RequiresA>()
+
+val instance = sharedDependencyInjectionContainer.provide<IRequiresA>()
 ```
 
 ## Run Tests

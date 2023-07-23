@@ -6,7 +6,7 @@ package abgier.di.poc
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class DependencyInjectionTest {
+class DependencyInjectionContainerTest {
     @Test fun containerInjectsAndProvides() {
         sharedDependencyInjectionContainer.inject<IServiceA, ServiceA>()
         sharedDependencyInjectionContainer.inject<IRequiresA, RequiresA>()

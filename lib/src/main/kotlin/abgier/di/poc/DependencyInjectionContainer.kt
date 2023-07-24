@@ -4,50 +4,113 @@
 package abgier.di.poc
 
 class DependencyInjectionContainer {
+    // Key is class and vaue is instance
     val singletons = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+
+    // Key is class and value is a factory
+    val scopedFactories = mutableMapOf<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>()
+
+    // Key is tuple of scope class and service class with instance as value
+    val scopedCache = mutableMapOf<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>()
 
     // TODO: inject transient
     // TODO: inject scoped? weakHashMap?
+    // TODO: framework should handle releaseing services?
+
+    inline fun <reified TService>addScoped(noinline instanceFactory: (java.lang.Class<Any>) -> TService): DependencyInjectionContainer {
+        this.scopedFactories.put(TService::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
+        return this
+    }
+
     
-    inline fun <reified T>addSingleton(instance: Any): DependencyInjectionContainer {
-        this.singletons.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TService>addSingleton(instance: Any): DependencyInjectionContainer {
+        this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified T, reified S>addSingleton(): DependencyInjectionContainer {
-        val instance = ReflectionConstructor.construct<T, S>(this.singletons)
-        this.singletons.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TService, reified TServiceInterface>addSingleton(): DependencyInjectionContainer {
+        val instance = ReflectionConstructor.construct<TService, TServiceInterface>(this.singletons, this.scopedFactories, this.scopedCache)
+        this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified T>provide() : T {
+    inline fun <reified TServiceInterface>provide() : TServiceInterface {
         // TODO: exception handling
-        val matchingService = this.singletons.get(T::class.java as java.lang.Class<Any>)
-        return matchingService as T
+        val service = this.singletons.get(TServiceInterface::class.java as java.lang.Class<Any>)
+        return service as TServiceInterface
     }
+
+    // TODO: generic type extends java.lang.Class<Any> to avoid casting
+    inline fun <reified TServiceInterface, reified TScope>provideScoped() : TServiceInterface {
+        var serviceInterface = TServiceInterface::class.java
+        var scopeClass = TScope::class.java
+
+        // Check scoped caches
+        val matchingScopedCache = this.scopedCache.get(
+            Pair<java.lang.Class<Any>, java.lang.Class<Any>>(scopeClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>))
+        if (matchingScopedCache != null) {
+            return matchingScopedCache as TServiceInterface
+        }
+
+        // Generate and cache scoped class instance
+        // TODO: exception handling
+        val matchingScoped = this.scopedFactories.get(serviceInterface as java.lang.Class<Any>)
+        val newScopedObject = matchingScoped!!.invoke(scopeClass)
+        this.scopedCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(scopeClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>), newScopedObject)
+        return newScopedObject as TServiceInterface
+    }
+
+    // TODO: .remove<TServiceInterface>
+    // TODO: .remove(service)
+    // TODO: also remove and references in to the interface in the caches
 }
 
+// TODO: move into parent
 class ReflectionConstructor {
 
+    // TODO: Create a get type function to recursively check or create objects
+    // if get class, then check if in cache, if not then create
+    // Recursion is required if a scoped class references another scoped class in its
+    // constructor
     companion object {
-        inline fun <reified T, reified S>construct(services: MutableMap<java.lang.Class<Any>, java.lang.Object>): java.lang.Object {
-            var serviceClass = S::class.java
+        inline fun <reified TService, reified TServiceInterface>construct(
+            singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
+            scopedFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
+            scopedCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
+            ): TService {
+            var serviceClass = TService::class.java
+            var serviceInterface = TServiceInterface::class.java
 
             // TODO: exception handling
             // Retrieve constructor function
-            val primaryConstructor = serviceClass.getConstructors()[0]
+            val primaryConstructor = serviceInterface.getConstructors()[0]
 
             // Prepare list of args from existing services
             val params = mutableListOf<Any>()
             for (param in primaryConstructor.getParameters()) {
-                val matchingService = services.get(param.type)
-                if (matchingService != null) {
-                    params.add(matchingService)
+                // Check if parameter type is a singleton
+                val matchingSingleton = singletons.get(param.type)
+                if (matchingSingleton != null) {
+                    params.add(matchingSingleton)
+                }
+
+                // Check if parameter type is a scoped type and is cached
+                val matchingScopedCache = scopedCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
+                if (matchingScopedCache != null) {
+                    params.add(matchingScopedCache)
+                }
+
+                // Check if parameter type is a scoped type and generate it
+                val matchingScoped = scopedFactories.get(param.type)
+                if (matchingScoped != null) {
+                    val newScopedObject = matchingScoped.invoke(serviceInterface as java.lang.Class<Any>)
+                    params.add(newScopedObject)
+                    scopedCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newScopedObject)
                 }
             }
 
             // TODO: exception handling
-            return primaryConstructor.newInstance(*params.toTypedArray()) as java.lang.Object
+            return primaryConstructor.newInstance(*params.toTypedArray()) as TService
         }
     }
 }

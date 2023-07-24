@@ -7,43 +7,76 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 class DependencyInjectionContainerTest {
-    @Test fun containerInjectsAndProvides() {
+    
+    @Test fun canInjectAndProvide() {
         val container = DependencyInjectionContainer()
-
+        
         container
-            .addSingleton<IServiceA>(ServiceA())
-            .addSingleton<IRequiresA, RequiresA>()
+            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
+            .addSingleton<IService, Service>()
 
-        assertTrue(container.provide<IServiceA>().exists())
-        assertTrue(container.provide<IRequiresA>().containsA())
+        assertTrue(container.provide<IService>().someMethod())
+    }
 
+    @Test fun scopedFactoriesUsesCorrectClass() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
+
+        val dummyLogger = container.provideScoped<ILogger<Dummy>, Dummy>()
+        assertTrue(dummyLogger != null)
+
+        dummyLogger.info("Hello World")
+    }
+
+    @Test fun scopedClassesAreCached() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
+
+        val dummyLoggerFirst = container.provideScoped<ILogger<Dummy>, Dummy>()
+        val dummyLoggerSecond = container.provideScoped<ILogger<Dummy>, Dummy>()
+        assertTrue(dummyLoggerFirst == dummyLoggerSecond)
     }
 }
 
+class Dummy {
 
-interface IServiceA {
-    fun exists(): Boolean
 }
 
-class ServiceA : IServiceA {
-    override fun exists(): Boolean {
-        return true
+interface ILogger<T> {
+    fun info(message: String)
+}
+
+
+class Logger<T> : ILogger<T> {
+    private val parentClass: java.lang.Class<T>
+
+    constructor(parentClass: java.lang.Class<T>) {
+        this.parentClass = parentClass
+    }
+
+    override fun info(message: String) {
+        println("${this.parentClass.getName()}::${message}")
     }
 }
 
-interface IRequiresA {
-    fun containsA(): Boolean
+interface IService {
+    fun someMethod(): Boolean
 }
 
-class RequiresA : IRequiresA {
-    val a: IServiceA
+class Service : IService {
+    val logger: ILogger<Service>
 
-    constructor(arg: IServiceA) {
-        this.a = arg
+    constructor(logger: ILogger<Service>) {
+        this.logger = logger
     }
 
-    override fun containsA(): Boolean
+    override fun someMethod(): Boolean
     {
-        return this.a != null
+        this.logger.info("Hello World")
+        return true
     }
 }

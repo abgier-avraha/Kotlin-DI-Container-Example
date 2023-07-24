@@ -8,28 +8,26 @@ class DependencyInjectionContainer {
     val singletons = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
 
     // Key is class and value is a factory
-    val scopedFactories = mutableMapOf<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>()
+    val singletonFactories = mutableMapOf<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>()
 
-    // Key is tuple of scope class and service class with instance as value
-    val scopedCache = mutableMapOf<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>()
+    // Key is tuple of parent class and service class with instance as value
+    val singletonFactoryCache = mutableMapOf<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>()
 
-    // TODO: inject transient
-    // TODO: inject scoped? weakHashMap?
-    // TODO: framework should handle releaseing services?
+    // TODO: how could this fit in a framework with lifecycles for instances?
 
-    inline fun <reified TService>addScoped(noinline instanceFactory: (java.lang.Class<Any>) -> TService): DependencyInjectionContainer {
-        this.scopedFactories.put(TService::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
+    inline fun <reified TService>injectFactory(noinline instanceFactory: (java.lang.Class<Any>) -> TService): DependencyInjectionContainer {
+        this.singletonFactories.put(TService::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
         return this
     }
 
     
-    inline fun <reified TService>addSingleton(instance: Any): DependencyInjectionContainer {
+    inline fun <reified TService>inject(instance: Any): DependencyInjectionContainer {
         this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified TService, reified TServiceInterface>addSingleton(): DependencyInjectionContainer {
-        val instance = ReflectionConstructor.construct<TService, TServiceInterface>(this.singletons, this.scopedFactories, this.scopedCache)
+    inline fun <reified TService, reified TServiceInterface>inject(): DependencyInjectionContainer {
+        val instance = ReflectionConstructor.construct<TService, TServiceInterface>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
         this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
@@ -41,23 +39,24 @@ class DependencyInjectionContainer {
     }
 
     // TODO: generic type extends java.lang.Class<Any> to avoid casting
-    inline fun <reified TServiceInterface, reified TScope>provideScoped() : TServiceInterface {
+    inline fun <reified TServiceInterface, reified TParent>provideFactory() : TServiceInterface {
         var serviceInterface = TServiceInterface::class.java
-        var scopeClass = TScope::class.java
-
-        // Check scoped caches
-        val matchingScopedCache = this.scopedCache.get(
-            Pair<java.lang.Class<Any>, java.lang.Class<Any>>(scopeClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>))
-        if (matchingScopedCache != null) {
-            return matchingScopedCache as TServiceInterface
+        var parentClass = TParent::class.java
+        
+        // TODO: clean up this duplicate type find / create code and move to ReflectionConstructor
+        // Check factory caches
+        val matchingFactoryCache = this.singletonFactoryCache.get(
+            Pair<java.lang.Class<Any>, java.lang.Class<Any>>(parentClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>))
+        if (matchingFactoryCache != null) {
+            return matchingFactoryCache as TServiceInterface
         }
 
-        // Generate and cache scoped class instance
+        // Generate and cache factory class instance
         // TODO: exception handling
-        val matchingScoped = this.scopedFactories.get(serviceInterface as java.lang.Class<Any>)
-        val newScopedObject = matchingScoped!!.invoke(scopeClass)
-        this.scopedCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(scopeClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>), newScopedObject)
-        return newScopedObject as TServiceInterface
+        val matchingFactory = this.singletonFactories.get(serviceInterface as java.lang.Class<Any>)
+        val newFactoryObject = matchingFactory!!.invoke(parentClass)
+        this.singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(parentClass as java.lang.Class<Any>, serviceInterface as java.lang.Class<Any>), newFactoryObject)
+        return newFactoryObject as TServiceInterface
     }
 
     // TODO: .remove<TServiceInterface>
@@ -68,15 +67,15 @@ class DependencyInjectionContainer {
 // TODO: move into parent
 class ReflectionConstructor {
 
-    // TODO: Create a get type function to recursively check or create objects
-    // if get class, then check if in cache, if not then create
-    // Recursion is required if a scoped class references another scoped class in its
+    // TODO: Create find type function to recursively find instances of types so that 
+    // this function can decide whether to create new objects or not
+    // Recursion is required if a factory class references another factory class in its
     // constructor
     companion object {
         inline fun <reified TService, reified TServiceInterface>construct(
             singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            scopedFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
-            scopedCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
+            singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
+            singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
             ): TService {
             var serviceClass = TService::class.java
             var serviceInterface = TServiceInterface::class.java
@@ -94,18 +93,18 @@ class ReflectionConstructor {
                     params.add(matchingSingleton)
                 }
 
-                // Check if parameter type is a scoped type and is cached
-                val matchingScopedCache = scopedCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
-                if (matchingScopedCache != null) {
-                    params.add(matchingScopedCache)
+                // Check if parameter type is a factory type and is cached
+                val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
+                if (matchingFactoryCache != null) {
+                    params.add(matchingFactoryCache)
                 }
 
-                // Check if parameter type is a scoped type and generate it
-                val matchingScoped = scopedFactories.get(param.type)
-                if (matchingScoped != null) {
-                    val newScopedObject = matchingScoped.invoke(serviceInterface as java.lang.Class<Any>)
-                    params.add(newScopedObject)
-                    scopedCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newScopedObject)
+                // Check if parameter type is a factory type and generate it
+                val matchingFactory = singletonFactories.get(param.type)
+                if (matchingFactory != null) {
+                    val newFactoryObject = matchingFactory.invoke(serviceInterface as java.lang.Class<Any>)
+                    params.add(newFactoryObject)
+                    singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newFactoryObject)
                 }
             }
 

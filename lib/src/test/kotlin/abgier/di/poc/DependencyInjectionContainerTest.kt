@@ -12,32 +12,32 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
-            .addSingleton<IService, Service>()
+            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
+            .inject<IService, Service>()
 
         assertTrue(container.provide<IService>().someMethod())
     }
 
-    @Test fun scopedFactoriesUsesCorrectClass() {
+    @Test fun singletonFactoriesUsesCorrectClass() {
         val container = DependencyInjectionContainer()
         
         container
-            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
+            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
 
-        val dummyLogger = container.provideScoped<ILogger<Dummy>, Dummy>()
+        val dummyLogger = container.provideFactory<ILogger<Dummy>, Dummy>()
         assertTrue(dummyLogger != null)
 
         dummyLogger.info("Hello World")
     }
 
-    @Test fun scopedClassesAreCached() {
+    @Test fun factoryClassesAreCached() {
         val container = DependencyInjectionContainer()
         
         container
-            .addScoped<ILogger<Any>>({scope -> Logger(scope) as ILogger<Any>})
+            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
 
-        val dummyLoggerFirst = container.provideScoped<ILogger<Dummy>, Dummy>()
-        val dummyLoggerSecond = container.provideScoped<ILogger<Dummy>, Dummy>()
+        val dummyLoggerFirst = container.provideFactory<ILogger<Dummy>, Dummy>()
+        val dummyLoggerSecond = container.provideFactory<ILogger<Dummy>, Dummy>()
         assertTrue(dummyLoggerFirst == dummyLoggerSecond)
     }
 }

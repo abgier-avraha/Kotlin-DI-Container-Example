@@ -3,40 +3,51 @@
  */
 package abgier.di.poc
 
-// TODO: decorator for injecting from sharedDependencyInjectionContainer store
-// TODO: decorator param for injecting from different DependencyInjectionContainer
-
-val sharedDependencyInjectionContainer = DependencyInjectionContainer()
-
 class DependencyInjectionContainer {
-    val sharedServicesStore = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+    val singletons = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
 
-    // TODO: inject transient and inject singletong
+    // TODO: inject transient
+    // TODO: inject scoped? weakHashMap?
+    
+    inline fun <reified T>addSingleton(instance: Any): DependencyInjectionContainer {
+        this.singletons.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+        return this
+    }
 
-    inline fun <reified T, reified S>inject() {
-        var serviceClass = S::class.java
-
-        // TODO: exception handling
-        val primaryConstructor = serviceClass.getConstructors()[0]
-
-        val params = mutableListOf<Any>()
-        for (param in primaryConstructor.getParameters()) {
-            val matchingService = this.sharedServicesStore.get(param.type)
-            if (matchingService != null) {
-                params.add(matchingService)
-            }
-        }
-
-        // TODO: exception handling
-        val instance = primaryConstructor.newInstance(*params.toTypedArray())
-        this.sharedServicesStore.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
-        return
+    inline fun <reified T, reified S>addSingleton(): DependencyInjectionContainer {
+        val instance = ReflectionConstructor.construct<T, S>(this.singletons)
+        this.singletons.put(T::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+        return this
     }
 
     inline fun <reified T>provide() : T {
         // TODO: exception handling
-        val matchingService = this.sharedServicesStore.get(T::class.java as java.lang.Class<Any>)
+        val matchingService = this.singletons.get(T::class.java as java.lang.Class<Any>)
         return matchingService as T
     }
 }
 
+class ReflectionConstructor {
+
+    companion object {
+        inline fun <reified T, reified S>construct(services: MutableMap<java.lang.Class<Any>, java.lang.Object>): java.lang.Object {
+            var serviceClass = S::class.java
+
+            // TODO: exception handling
+            // Retrieve constructor function
+            val primaryConstructor = serviceClass.getConstructors()[0]
+
+            // Prepare list of args from existing services
+            val params = mutableListOf<Any>()
+            for (param in primaryConstructor.getParameters()) {
+                val matchingService = services.get(param.type)
+                if (matchingService != null) {
+                    params.add(matchingService)
+                }
+            }
+
+            // TODO: exception handling
+            return primaryConstructor.newInstance(*params.toTypedArray()) as java.lang.Object
+        }
+    }
+}

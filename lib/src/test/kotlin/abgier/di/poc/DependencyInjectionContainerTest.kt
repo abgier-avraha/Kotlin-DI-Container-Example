@@ -8,11 +8,14 @@ import kotlin.test.assertTrue
 
 class DependencyInjectionContainerTest {
     @Test fun containerInjectsAndProvides() {
-        sharedDependencyInjectionContainer.inject<IServiceA, ServiceA>()
-        sharedDependencyInjectionContainer.inject<IRequiresA, RequiresA>()
+        val container = DependencyInjectionContainer()
 
-        assertTrue(sharedDependencyInjectionContainer.provide<IServiceA>().exists())
-        assertTrue(sharedDependencyInjectionContainer.provide<IRequiresA>().containsA())
+        container
+            .addSingleton<IServiceA>(ServiceA())
+            .addSingleton<IRequiresA, RequiresA>()
+
+        assertTrue(container.provide<IServiceA>().exists())
+        assertTrue(container.provide<IRequiresA>().containsA())
 
     }
 }

@@ -15,20 +15,20 @@ class DependencyInjectionContainer {
 
     // TODO: how could this fit in a framework with lifecycles for instances?
 
-    inline fun <reified TService>injectFactory(noinline instanceFactory: (java.lang.Class<Any>) -> TService): DependencyInjectionContainer {
-        this.singletonFactories.put(TService::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
+    inline fun <reified TServiceInterface>injectFactory(noinline instanceFactory: (java.lang.Class<Any>) -> TServiceInterface): DependencyInjectionContainer {
+        this.singletonFactories.put(TServiceInterface::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
         return this
     }
 
     
-    inline fun <reified TService>inject(instance: Any): DependencyInjectionContainer {
-        this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TServiceInterface>inject(instance: java.lang.Object): DependencyInjectionContainer {
+        this.singletons.put(TServiceInterface::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified TService, reified TServiceInterface>inject(): DependencyInjectionContainer {
-        val instance = ReflectionConstructor.construct<TService, TServiceInterface>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
-        this.singletons.put(TService::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TServiceInterface, reified TService>inject(): DependencyInjectionContainer {
+        val instance = ReflectionConstructor.construct<TServiceInterface, TService>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
+        this.singletons.put(TServiceInterface::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
@@ -72,17 +72,43 @@ class ReflectionConstructor {
     // Recursion is required if a factory class references another factory class in its
     // constructor
     companion object {
-        inline fun <reified TService, reified TServiceInterface>construct(
+        // inline fun <reified TService, reified TServiceInterface>getInstanceOfType(
+        //     singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
+        //     singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
+        //     singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
+        //     ): TService {
+
+        //     // Check if parameter type is a singleton
+        //     val matchingSingleton = singletons.get(param.type)
+        //     if (matchingSingleton != null) {
+        //         params.add(matchingSingleton)
+        //     }
+
+        //     // Check if parameter type is a factory type and is cached
+        //     val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
+        //     if (matchingFactoryCache != null) {
+        //         params.add(matchingFactoryCache)
+        //     }
+
+        //     // Check if parameter type is a factory type and generate it
+        //     val matchingFactory = singletonFactories.get(param.type)
+        //     if (matchingFactory != null) {
+        //         val newFactoryObject = matchingFactory.invoke(serviceInterface as java.lang.Class<Any>)
+        //         params.add(newFactoryObject)
+        //         singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newFactoryObject)
+        //     }
+        // }
+
+        inline fun <reified TServiceInterface, reified TService>construct(
             singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
             singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
             singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
-            ): TService {
+            ): TServiceInterface {
             var serviceClass = TService::class.java
-            var serviceInterface = TServiceInterface::class.java
 
             // TODO: exception handling
             // Retrieve constructor function
-            val primaryConstructor = serviceInterface.getConstructors()[0]
+            val primaryConstructor = serviceClass.getConstructors()[0]
 
             // Prepare list of args from existing services
             val params = mutableListOf<Any>()
@@ -94,7 +120,7 @@ class ReflectionConstructor {
                 }
 
                 // Check if parameter type is a factory type and is cached
-                val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
+                val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceClass as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
                 if (matchingFactoryCache != null) {
                     params.add(matchingFactoryCache)
                 }
@@ -102,14 +128,14 @@ class ReflectionConstructor {
                 // Check if parameter type is a factory type and generate it
                 val matchingFactory = singletonFactories.get(param.type)
                 if (matchingFactory != null) {
-                    val newFactoryObject = matchingFactory.invoke(serviceInterface as java.lang.Class<Any>)
+                    val newFactoryObject = matchingFactory.invoke(serviceClass as java.lang.Class<Any>)
                     params.add(newFactoryObject)
-                    singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newFactoryObject)
+                    singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceClass, param.type as java.lang.Class<Any>), newFactoryObject)
                 }
             }
 
             // TODO: exception handling
-            return primaryConstructor.newInstance(*params.toTypedArray()) as TService
+            return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceInterface
         }
     }
 }

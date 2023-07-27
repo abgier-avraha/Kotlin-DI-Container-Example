@@ -26,8 +26,8 @@ class DependencyInjectionContainer {
         return this
     }
 
-    inline fun <reified TServiceInterface, reified TService>inject(): DependencyInjectionContainer {
-        val instance = ReflectionConstructor.construct<TServiceInterface, TService>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
+    inline fun <reified TServiceInterface, reified TService>inject(): DependencyInjectionContainer where TService : TServiceInterface {
+        val instance = ReflectionConstructor.fetchOrConstruct<TServiceInterface, TService>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
         this.singletons.put(TServiceInterface::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
@@ -72,39 +72,64 @@ class ReflectionConstructor {
     // Recursion is required if a factory class references another factory class in its
     // constructor
     companion object {
-        // inline fun <reified TService, reified TServiceInterface>getInstanceOfType(
-        //     singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-        //     singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
-        //     singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
-        //     ): TService {
+        fun <TServiceType>getInstanceFromType(
+            type: java.lang.Class<TServiceType>,
+            singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
+            singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
+            singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>,
+            ): TServiceType? {
 
-        //     // Check if parameter type is a singleton
-        //     val matchingSingleton = singletons.get(param.type)
-        //     if (matchingSingleton != null) {
-        //         params.add(matchingSingleton)
-        //     }
+            // Check if type is registered as a singleton
+            val matchingSingleton = singletons.get(type as java.lang.Class<Any>)
+            if (matchingSingleton != null) {
+                return matchingSingleton as TServiceType
+            }
 
-        //     // Check if parameter type is a factory type and is cached
-        //     val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
-        //     if (matchingFactoryCache != null) {
-        //         params.add(matchingFactoryCache)
-        //     }
+            return null
+        }
 
-        //     // Check if parameter type is a factory type and generate it
-        //     val matchingFactory = singletonFactories.get(param.type)
-        //     if (matchingFactory != null) {
-        //         val newFactoryObject = matchingFactory.invoke(serviceInterface as java.lang.Class<Any>)
-        //         params.add(newFactoryObject)
-        //         singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceInterface, param.type as java.lang.Class<Any>), newFactoryObject)
-        //     }
-        // }
+        fun <TServiceType>getInstanceFromType(
+            type: java.lang.Class<TServiceType>,
+            parentClass: java.lang.Class<*>,
+            singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
+            singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
+            singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>,
+            ): TServiceType? {
+            
+            // Check if type is registered as a singleton
+            var matchingSingletonOrCache = ReflectionConstructor.getInstanceFromType(type, singletons, singletonFactories, singletonFactoryCache)
+            if (matchingSingletonOrCache != null) {
+                return matchingSingletonOrCache as TServiceType
+            }
 
-        inline fun <reified TServiceInterface, reified TService>construct(
+            // Check if type is registered as a factory type and is cached
+            val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(type as java.lang.Class<Any>, parentClass as java.lang.Class<Any>))
+            if (matchingFactoryCache != null) {
+                return matchingFactoryCache as TServiceType
+            }
+
+            val matchingFactory = singletonFactories.get(type as java.lang.Class<Any>)
+            if (matchingFactory != null) {
+                val newFactoryObject = matchingFactory.invoke(parentClass as java.lang.Class<Any>)
+                singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(type, parentClass as java.lang.Class<Any>), newFactoryObject)
+                return newFactoryObject as TServiceType
+            }
+            
+            return null
+        }
+
+        inline fun <reified TServiceInterface, reified TService>fetchOrConstruct(
             singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
             singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
             singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
-            ): TServiceInterface {
+            ): TServiceInterface? where TService : TServiceInterface {
             var serviceClass = TService::class.java
+
+            var existingInstance = ReflectionConstructor.getInstanceFromType<TService>(serviceClass, singletons, singletonFactories, singletonFactoryCache)
+
+            if (existingInstance != null) {
+                return existingInstance as TServiceInterface
+            }
 
             // TODO: exception handling
             // Retrieve constructor function
@@ -113,25 +138,8 @@ class ReflectionConstructor {
             // Prepare list of args from existing services
             val params = mutableListOf<Any>()
             for (param in primaryConstructor.getParameters()) {
-                // Check if parameter type is a singleton
-                val matchingSingleton = singletons.get(param.type)
-                if (matchingSingleton != null) {
-                    params.add(matchingSingleton)
-                }
-
-                // Check if parameter type is a factory type and is cached
-                val matchingFactoryCache = singletonFactoryCache.get(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceClass as java.lang.Class<Any>, param.type as java.lang.Class<Any>))
-                if (matchingFactoryCache != null) {
-                    params.add(matchingFactoryCache)
-                }
-
-                // Check if parameter type is a factory type and generate it
-                val matchingFactory = singletonFactories.get(param.type)
-                if (matchingFactory != null) {
-                    val newFactoryObject = matchingFactory.invoke(serviceClass as java.lang.Class<Any>)
-                    params.add(newFactoryObject)
-                    singletonFactoryCache.put(Pair<java.lang.Class<Any>, java.lang.Class<Any>>(serviceClass, param.type as java.lang.Class<Any>), newFactoryObject)
-                }
+                var param = ReflectionConstructor.getInstanceFromType<Any>(param.type as java.lang.Class<Any>, serviceClass, singletons, singletonFactories, singletonFactoryCache)
+                params.add(param as Any)
             }
 
             // TODO: exception handling

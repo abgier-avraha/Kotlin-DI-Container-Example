@@ -12,7 +12,7 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
+            .injectFactory<ILogger>({parent -> Logger(parent) as ILogger})
             .inject<IService, Service>()
 
         assertTrue(container.provide<IService>().someMethod())
@@ -22,9 +22,9 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
+            .injectFactory<ILogger>({parent -> Logger(parent)})
 
-        val dummyLogger = container.provideFactory<ILogger<Dummy>, Dummy>()
+        val dummyLogger = container.provideFactory<ILogger, Dummy>()
         assertTrue(dummyLogger != null)
 
         dummyLogger.info("Hello World")
@@ -34,10 +34,10 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger<Any>>({parent -> Logger(parent) as ILogger<Any>})
+            .injectFactory<ILogger>({parent -> Logger(parent)})
 
-        val dummyLoggerFirst = container.provideFactory<ILogger<Dummy>, Dummy>()
-        val dummyLoggerSecond = container.provideFactory<ILogger<Dummy>, Dummy>()
+        val dummyLoggerFirst = container.provideFactory<ILogger, Dummy>()
+        val dummyLoggerSecond = container.provideFactory<ILogger, Dummy>()
         assertTrue(dummyLoggerFirst == dummyLoggerSecond)
     }
 }
@@ -46,15 +46,15 @@ class Dummy {
 
 }
 
-interface ILogger<T> {
+interface ILogger {
     fun info(message: String)
 }
 
 
-class Logger<T> : ILogger<T> {
-    private val parentClass: java.lang.Class<T>
+class Logger : ILogger {
+    private val parentClass: java.lang.Class<Any>
 
-    constructor(parentClass: java.lang.Class<T>) {
+    constructor(parentClass: java.lang.Class<Any>) {
         this.parentClass = parentClass
     }
 
@@ -68,9 +68,9 @@ interface IService {
 }
 
 class Service : IService {
-    val logger: ILogger<Service>
+    val logger: ILogger
 
-    constructor(logger: ILogger<Service>) {
+    constructor(logger: ILogger) {
         this.logger = logger
     }
 

@@ -5,6 +5,7 @@ package abgier.di.poc
 
 import kotlin.test.Test
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class DependencyInjectionContainerTest {
     
@@ -12,10 +13,28 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger>({parent -> Logger(parent) as ILogger})
+            .injectFactory<ILogger>({ parent -> Logger(parent) })
             .inject<IService, Service>()
 
         assertTrue(container.provide<IService>().someMethod())
+        assertTrue(container.provide<IService>().logger != null)
+    }
+
+    @Test fun throwsWhenProvidingRemoved() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .injectFactory<ILogger>({parent -> Logger(parent) })
+            .inject<IService, Service>()
+
+        container.remove<IService>()
+
+        assertFailsWith<Exception>(
+            message = "Instance of interface abgier.di.poc.IService could not be fetched",
+            block = {
+                container.provide<IService>()
+            }
+        )
     }
 
     @Test fun singletonFactoriesUsesCorrectClass() {
@@ -27,6 +46,7 @@ class DependencyInjectionContainerTest {
         val dummyLogger = container.provideFactory<ILogger, Dummy>()
         assertTrue(dummyLogger != null)
 
+        // TODO: asseriton on print out
         dummyLogger.info("Hello World")
     }
 
@@ -64,11 +84,13 @@ class Logger : ILogger {
 }
 
 interface IService {
+    val logger: ILogger
+
     fun someMethod(): Boolean
 }
 
 class Service : IService {
-    val logger: ILogger
+    override val logger: ILogger
 
     constructor(logger: ILogger) {
         this.logger = logger
@@ -76,7 +98,6 @@ class Service : IService {
 
     override fun someMethod(): Boolean
     {
-        this.logger.info("Hello World")
         return true
     }
 }

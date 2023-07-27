@@ -7,57 +7,65 @@ package abgier.di.poc
 
 class DependencyInjectionContainer {
     // Key is class and vaue is instance
-    val singletons = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
+    var singletons = mutableMapOf<java.lang.Class<Any>, java.lang.Object>()
 
     // Key is class and value is a factory
-    val singletonFactories = mutableMapOf<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>()
+    var singletonFactories = mutableMapOf<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>()
 
     // Key is tuple of parent class and service class with instance as value
-    val singletonFactoryCache = mutableMapOf<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>()
+    var singletonFactoryCache = mutableMapOf<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>()
 
 
-    inline fun <reified TServiceInterface>injectFactory(noinline instanceFactory: (java.lang.Class<Any>) -> TServiceInterface): DependencyInjectionContainer {
-        this.singletonFactories.put(TServiceInterface::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
+    inline fun <reified TServiceType>injectFactory(noinline instanceFactory: (java.lang.Class<Any>) -> TServiceType): DependencyInjectionContainer {
+        this.singletonFactories.put(TServiceType::class.java as java.lang.Class<Any>, instanceFactory as (java.lang.Class<Any>) -> java.lang.Object)
         return this
     }
     
-    inline fun <reified TServiceInterface>inject(instance: java.lang.Object): DependencyInjectionContainer {
-        this.singletons.put(TServiceInterface::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TServiceType>inject(instance: java.lang.Object): DependencyInjectionContainer {
+        this.singletons.put(TServiceType::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified TServiceInterface, reified TService>inject(): DependencyInjectionContainer where TService : TServiceInterface {
-        val instance = ReflectionConstructor.construct<TServiceInterface, TService>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
-        this.singletons.put(TServiceInterface::class.java as java.lang.Class<Any>, instance as java.lang.Object)
+    inline fun <reified TServiceType, reified TService>inject(): DependencyInjectionContainer where TService : TServiceType {
+        val instance = ReflectionConstructor.construct<TServiceType, TService>(this.singletons, this.singletonFactories, this.singletonFactoryCache)
+        this.singletons.put(TServiceType::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified TServiceInterface>provide() : TServiceInterface {
-        val serviceInterface = TServiceInterface::class.java
-        val instance = ReflectionConstructor.getInstanceFromType<TServiceInterface>(serviceInterface, this.singletons, this.singletonFactories, this.singletonFactoryCache)
+    inline fun <reified TServiceType>provide() : TServiceType {
+        val serviceType = TServiceType::class.java
+        val instance = ReflectionConstructor.getInstanceFromType<TServiceType>(serviceType, this.singletons, this.singletonFactories, this.singletonFactoryCache)
 
         if (instance == null) {
-            throw Exception("Instance of ${serviceInterface} could not be fetched")
+            throw Exception("Instance of ${serviceType} could not be fetched")
         }
 
-        return instance as TServiceInterface
+        return instance as TServiceType
     }
 
-    inline fun <reified TServiceInterface, reified TParent>provideFactory() : TServiceInterface {
-        val serviceInterface = TServiceInterface::class.java
+    inline fun <reified TServiceType, reified TParent>provideFactory() : TServiceType {
+        val serviceType = TServiceType::class.java
         val parentClass = TParent::class.java
-        val instance = ReflectionConstructor.getInstanceFromType<TServiceInterface>(serviceInterface, parentClass, this.singletons, this.singletonFactories, this.singletonFactoryCache)
+        val instance = ReflectionConstructor.getInstanceFromType<TServiceType>(serviceType, parentClass, this.singletons, this.singletonFactories, this.singletonFactoryCache)
 
+        // TODO: create exception class
         if (instance == null) {
-            throw Exception("Instance of ${serviceInterface} could not be fetched")
+            throw Exception("Instance of ${serviceType} could not be fetched")
         }
 
         return instance
     }
 
-    // TODO: .remove<TServiceInterface>
-    // TODO: .remove(service)
-    // TODO: also remove and references in to the interface in the caches
+    fun <TServiceType>remove(serviceType: java.lang.Class<TServiceType>) {
+        this.singletons = this.singletons.filterKeys{ it::class.java == serviceType }.toMutableMap()
+        this.singletonFactories = this.singletonFactories.filterKeys{ it::class.java == serviceType }.toMutableMap()
+        this.singletonFactoryCache = this.singletonFactoryCache.filterKeys{ it.first::class.java == serviceType }.toMutableMap()
+    }
+
+    inline fun <reified TServiceType>remove() {
+        val serviceType = TServiceType::class.java
+        this.remove(serviceType)
+    }
 }
 
 class ReflectionConstructor {
@@ -109,17 +117,17 @@ class ReflectionConstructor {
             return null
         }
 
-        inline fun <reified TServiceInterface, reified TService>construct(
+        inline fun <reified TServiceType, reified TService>construct(
             singletons: MutableMap<java.lang.Class<Any>, java.lang.Object>,
             singletonFactories: MutableMap<java.lang.Class<Any>, (java.lang.Class<Any>) -> java.lang.Object>,
             singletonFactoryCache: MutableMap<Pair<java.lang.Class<Any>, java.lang.Class<Any>>, java.lang.Object>
-            ): TServiceInterface? where TService : TServiceInterface {
+            ): TServiceType? where TService : TServiceType {
             val serviceClass = TService::class.java
 
             val existingInstance = ReflectionConstructor.getInstanceFromType<TService>(serviceClass, singletons, singletonFactories, singletonFactoryCache)
 
             if (existingInstance != null) {
-                return existingInstance as TServiceInterface
+                return existingInstance as TServiceType
             }
 
             // Retrieve constructor function
@@ -137,7 +145,7 @@ class ReflectionConstructor {
                 params.add(param as Any)
             }
 
-            return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceInterface
+            return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceType
         }
     }
 }

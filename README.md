@@ -3,10 +3,13 @@
 ## Uses Reified Generics
 
 ```kotlin
-sharedDependencyInjectionContainer.inject<IServiceA, ServiceA>()
-sharedDependencyInjectionContainer.inject<IRequiresA, RequiresA>()
+val container = DependencyInjectionContainer()
 
-val instance = sharedDependencyInjectionContainer.provide<IRequiresA>()
+container
+    .injectFactory<ILogger>({ parent -> Logger(parent) })
+    .inject<IService, Service>()
+
+val service = container.provide<IService>()
 ```
 
 ## Run Tests

@@ -3,13 +3,50 @@
 ## Uses Reified Generics
 
 ```kotlin
-val container = DependencyInjectionContainer()
+fun main() {
+    val container = DependencyInjectionContainer()
+    
+    container
+        .injectFactory<ILogger>({ parent -> Logger(parent) })
+        .inject<IService, Service>()
+    
+    val service = container.provide<IService>()
+    service.logSomething("Test")
+}
 
-container
-    .injectFactory<ILogger>({ parent -> Logger(parent) })
-    .inject<IService, Service>()
+interface ILogger {
+    fun info(message: String)
+}
 
-val service = container.provide<IService>()
+class Logger : ILogger {
+    private val parentClass: java.lang.Class<Any>
+
+    constructor(parentClass: java.lang.Class<Any>) {
+        this.parentClass = parentClass
+    }
+
+    override fun info(message: String) {
+        println("${this.parentClass.getName()}::${message}")
+    }
+}
+
+interface IService {
+    fun logSomething()
+}
+
+class Service : IService {
+    private val logger: ILogger
+
+    constructor(logger: ILogger) {
+        this.logger = logger
+    }
+
+    override fun logSomething(message: String): Boolean
+    {
+        this.logger.info(message)
+    }
+}
+
 ```
 
 ## Run Tests

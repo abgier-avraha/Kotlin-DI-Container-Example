@@ -2,6 +2,8 @@
 
 Uses reified generics to build objects based on their constructor arguments.
 
+Refer to `lib/src/test/kotlin/com/di/poc/DependencyInjectionContainerTest.kt` for more detailed examples.
+
 ## Example
 
 ```kotlin

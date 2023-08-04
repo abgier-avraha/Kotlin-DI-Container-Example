@@ -7,8 +7,8 @@ fun main() {
     val container = DependencyInjectionContainer()
     
     container
-        .injectFactory<ILogger>({ parent -> Logger(parent) })
-        .inject<IService, Service>()
+        .injectTransient<ILogger>({ parent -> Logger(parent) })
+        .injectSingleton<IService, Service>()
     
     val service = container.provide<IService>()
     service.logSomething("Test")

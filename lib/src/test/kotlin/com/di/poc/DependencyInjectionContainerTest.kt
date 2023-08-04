@@ -13,19 +13,27 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger>({ parent -> Logger(parent) })
-            .inject<IService, Service>()
+            .injectTransient<ILogger, Logger>()
+            .injectSingleton<IService, Service>()
 
-        assertTrue(container.provide<IService>().someMethod())
-        assertTrue(container.provide<IService>().logger != null)
+        val service = container.provide<IService>()
+
+        assertTrue(service != null)
+        assertTrue(service.logger != null)
+
+        service.someMethod()
+        service.logger.configure(service)
+
+        // TODO: assertion and stdout
+        service.logger.info("Test")
     }
 
     @Test fun throwsWhenProvidingRemoved() {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger>({parent -> Logger(parent) })
-            .inject<IService, Service>()
+            .injectTransient<ILogger, Logger>()
+            .injectSingleton<IService, Service>()
 
         container.remove<IService>()
 
@@ -37,28 +45,27 @@ class DependencyInjectionContainerTest {
         )
     }
 
-    @Test fun singletonFactoriesUsesCorrectClass() {
+    @Test fun singletonDependencyEquality() {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger>({parent -> Logger(parent)})
+            .injectTransient<ILogger, Logger>()
+            .injectSingleton<IService, Service>()
 
-        val dummyLogger = container.provideFactory<ILogger, Dummy>()
-        assertTrue(dummyLogger != null)
-
-        // TODO: asseriton on print out
-        dummyLogger.info("Hello World")
+        val serviceA = container.provide<IService>()
+        val serviceB = container.provide<IService>()
+        assertTrue(serviceA == serviceB)
     }
 
-    @Test fun factoryClassesAreCached() {
+    @Test fun transientDependencyInequality() {
         val container = DependencyInjectionContainer()
         
         container
-            .injectFactory<ILogger>({parent -> Logger(parent)})
+            .injectTransient<ILogger, Logger>()
 
-        val dummyLoggerFirst = container.provideFactory<ILogger, Dummy>()
-        val dummyLoggerSecond = container.provideFactory<ILogger, Dummy>()
-        assertTrue(dummyLoggerFirst == dummyLoggerSecond)
+        val loggerA = container.provide<ILogger>()
+        val loggerB = container.provide<ILogger>()
+        assertTrue(loggerA != loggerB)
     }
 }
 
@@ -67,26 +74,27 @@ class Dummy {
 }
 
 interface ILogger {
+    fun <T : Any>configure(forInstance: T)
     fun info(message: String)
 }
 
 
 class Logger : ILogger {
-    private val parentClass: java.lang.Class<Any>
+    private var prefix = ""
 
-    constructor(parentClass: java.lang.Class<Any>) {
-        this.parentClass = parentClass
+    override fun <T : Any>configure(forInstance: T) {
+        this.prefix = forInstance::class.java.getName()
     }
 
     override fun info(message: String) {
-        println("${this.parentClass.getName()}::${message}")
+        println("${this.prefix}::${message}")
     }
 }
 
 interface IService {
     val logger: ILogger
 
-    fun someMethod(): Boolean
+    fun someMethod()
 }
 
 class Service : IService {
@@ -96,8 +104,7 @@ class Service : IService {
         this.logger = logger
     }
 
-    override fun someMethod(): Boolean
+    override fun someMethod()
     {
-        return true
     }
 }

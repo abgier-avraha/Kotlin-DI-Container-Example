@@ -21,11 +21,24 @@ class DependencyInjectionContainerTest {
         assertTrue(service != null)
         assertTrue(service.logger != null)
 
-        service.someMethod()
+        assertTrue(service.someMethod() == "Service")
         service.logger.configure(service)
 
         // TODO: assertion and stdout
         service.logger.info("Test")
+    }
+
+    @Test fun canInjectAndReplace() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .injectTransient<ILogger, Logger>()
+            .injectSingleton<IService, Service>()
+            .injectSingleton<IService, SomeService>()
+
+        val service = container.provide<IService>()
+
+        assertTrue(service.someMethod() == "SomeService")
     }
 
     @Test fun throwsWhenProvidingRemoved() {
@@ -94,7 +107,7 @@ class Logger : ILogger {
 interface IService {
     val logger: ILogger
 
-    fun someMethod()
+    fun someMethod(): String
 }
 
 class Service : IService {
@@ -104,7 +117,21 @@ class Service : IService {
         this.logger = logger
     }
 
-    override fun someMethod()
+    override fun someMethod(): String
     {
+        return "Service"
+    }
+}
+
+class SomeService : IService {
+    override val logger: ILogger
+
+    constructor(logger: ILogger) {
+        this.logger = logger
+    }
+
+    override fun someMethod(): String
+    {
+        return "SomeService"
     }
 }

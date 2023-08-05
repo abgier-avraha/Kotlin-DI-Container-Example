@@ -12,9 +12,10 @@ fun main() {
     
     container
         .injectTransient<ILogger, Logger>()
-        .injectSingleton<IService, Service>()
-    
-    val service = container.provide<IService>()
+        .injectScoped<IService, Service>()
+
+    val scope = container.createScope()
+    val service = scope.provide<IService>()
     service.logger.configure(service)
     service.logSomething("Test")
 }

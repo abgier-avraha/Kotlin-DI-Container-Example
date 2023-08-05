@@ -12,104 +12,50 @@ class DependencyInjectionContainer {
     // Key is class and value is a factory
     var transientDependencies = mutableMapOf<java.lang.Class<Any>, java.lang.Class<Any>>()
 
-    inline fun <reified TServiceType, reified TService>injectTransient(): DependencyInjectionContainer {
-        this.transientDependencies.put(TServiceType::class.java as java.lang.Class<Any>, TService::class.java as java.lang.Class<Any>)
-        return this
+    // Key is class and value is a factory
+    var scopedDependencies = mutableMapOf<java.lang.Class<Any>, java.lang.Class<Any>>()
+
+    fun createScope(): ServiceScope
+    {
+        return ServiceScope(this)
     }
-    
+
     inline fun <reified TServiceType>injectSingleton(instance: java.lang.Object): DependencyInjectionContainer {
         this.singletonDependencies.put(TServiceType::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
     inline fun <reified TServiceType, reified TService>injectSingleton(): DependencyInjectionContainer where TService : TServiceType {
-        val instance = ReflectionConstructor.construct<TServiceType, TService>(this.singletonDependencies, this.transientDependencies)
+        // Construct singleton from generic arg
+        // Singletons can not contain transient or scoped dependencies
+        val instance = ReflectionConstructor.construct<TServiceType, TService>(
+            this.singletonDependencies,
+            mutableMapOf<java.lang.Class<Any>, java.lang.Class<Any>>(),
+            mutableMapOf<java.lang.Class<Any>, java.lang.Class<Any>>(),
+            mutableMapOf<java.lang.Class<Any>, java.lang.Object>())
+
         this.singletonDependencies.put(TServiceType::class.java as java.lang.Class<Any>, instance as java.lang.Object)
         return this
     }
 
-    inline fun <reified TServiceType>provide() : TServiceType {
-        val serviceType = TServiceType::class.java
-        val instance = ReflectionConstructor.getInstanceFromType<TServiceType>(serviceType, this.singletonDependencies, this.transientDependencies)
-
-        if (instance == null) {
-            throw Exception("Instance for ${serviceType} could not be fetched")
-        }
-
-        return instance as TServiceType
+    inline fun <reified TServiceType, reified TService>injectTransient(): DependencyInjectionContainer {
+        this.transientDependencies.put(TServiceType::class.java as java.lang.Class<Any>, TService::class.java as java.lang.Class<Any>)
+        return this
     }
-
+    
+    inline fun <reified TServiceType, reified TService>injectScoped(): DependencyInjectionContainer {
+        this.scopedDependencies.put(TServiceType::class.java as java.lang.Class<Any>, TService::class.java as java.lang.Class<Any>)
+        return this
+    }
+    
     fun <TServiceType>remove(serviceType: java.lang.Class<TServiceType>) {
         this.singletonDependencies = this.singletonDependencies.filterKeys{ it::class.java == serviceType }.toMutableMap()
         this.transientDependencies = this.transientDependencies.filterKeys{ it::class.java == serviceType }.toMutableMap()
+        this.scopedDependencies = this.scopedDependencies.filterKeys{ it::class.java == serviceType }.toMutableMap()
     }
 
     inline fun <reified TServiceType>remove() {
         val serviceType = TServiceType::class.java
         this.remove(serviceType)
-    }
-}
-
-class ReflectionConstructor {
-
-    companion object {
-        fun <TServiceType>getInstanceFromType(
-            type: java.lang.Class<TServiceType>,
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            ): TServiceType? {
-
-            // Check if type is registered as a singleton dep
-            val matchingSingleton = singletonDependencies.get(type as java.lang.Class<Any>) as TServiceType
-            if (matchingSingleton != null) {
-                return matchingSingleton
-            }
-
-            // Check if type is registered as a transient dep
-            val matchingTransient = transientDependencies.get(type as java.lang.Class<Any>) as java.lang.Class<TServiceType>?
-            if (matchingTransient != null) {
-                val newInstance = ReflectionConstructor.constructFromClass(matchingTransient, singletonDependencies, transientDependencies)
-                return newInstance
-            }
-            
-            return null
-        }
-
-        fun <TServiceType>constructFromClass(
-            serviceClass: java.lang.Class<TServiceType>,
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            ): TServiceType? {
-
-            val existingInstance = ReflectionConstructor.getInstanceFromType<TServiceType>(serviceClass, singletonDependencies, transientDependencies)
-
-            if (existingInstance != null) {
-                return existingInstance as TServiceType
-            }
-
-            // Retrieve constructor function
-            val constructors = serviceClass.getConstructors()
-            if (constructors.size < 1) {
-                throw Exception("No constructor found for ${serviceClass}")
-            }
-
-            val primaryConstructor = serviceClass.getConstructors()[0]
-
-            // Prepare list of args from existing services
-            val params = mutableListOf<Any>()
-            for (param in primaryConstructor.getParameters()) {
-                val param = ReflectionConstructor.getInstanceFromType<Any>(param.type as java.lang.Class<Any>, singletonDependencies, transientDependencies)
-                params.add(param as Any)
-            }
-
-            return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceType
-        }
-
-        inline fun <reified TServiceType, reified TService>construct(
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            ): TServiceType? where TService : TServiceType {
-            return ReflectionConstructor.constructFromClass(TService::class.java, singletonDependencies, transientDependencies) as TServiceType
-        }
     }
 }

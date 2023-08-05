@@ -14,12 +14,10 @@ class DependencyInjectionContainerTest {
         
         container
             .injectTransient<ILogger, Logger>()
-            .injectSingleton<IService, Service>()
+            .injectScoped<IService, Service>()
 
-        val service = container.provide<IService>()
-
-        assertTrue(service != null)
-        assertTrue(service.logger != null)
+        val scope = container.createScope()
+        val service = scope.provide<IService>()
 
         assertTrue(service.someMethod() == "Service")
         service.logger.configure(service)
@@ -33,10 +31,11 @@ class DependencyInjectionContainerTest {
         
         container
             .injectTransient<ILogger, Logger>()
-            .injectSingleton<IService, Service>()
-            .injectSingleton<IService, SomeService>()
+            .injectScoped<IService, Service>()
+            .injectScoped<IService, SomeService>()
 
-        val service = container.provide<IService>()
+        val scope = container.createScope()
+        val service = scope.provide<IService>()
 
         assertTrue(service.someMethod() == "SomeService")
     }
@@ -46,14 +45,15 @@ class DependencyInjectionContainerTest {
         
         container
             .injectTransient<ILogger, Logger>()
-            .injectSingleton<IService, Service>()
+            .injectScoped<IService, Service>()
 
         container.remove<IService>()
 
+        val scope = container.createScope()
         assertFailsWith<Exception>(
             message = "Instance for interface com.di.poc.IService could not be fetched",
             block = {
-                container.provide<IService>()
+                scope.provide<IService>()
             }
         )
     }
@@ -62,11 +62,11 @@ class DependencyInjectionContainerTest {
         val container = DependencyInjectionContainer()
         
         container
-            .injectTransient<ILogger, Logger>()
-            .injectSingleton<IService, Service>()
+            .injectSingleton<Dummy, Dummy>()
 
-        val serviceA = container.provide<IService>()
-        val serviceB = container.provide<IService>()
+        val scope = container.createScope()
+        val serviceA = scope.provide<Dummy>()
+        val serviceB = scope.provide<Dummy>()
         assertTrue(serviceA == serviceB)
     }
 
@@ -76,9 +76,36 @@ class DependencyInjectionContainerTest {
         container
             .injectTransient<ILogger, Logger>()
 
-        val loggerA = container.provide<ILogger>()
-        val loggerB = container.provide<ILogger>()
+        val scope = container.createScope()
+        val loggerA = scope.provide<ILogger>()
+        val loggerB = scope.provide<ILogger>()
         assertTrue(loggerA != loggerB)
+    }
+
+    @Test fun scopedCacheEquality() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .injectTransient<ILogger, Logger>()
+            .injectScoped<IService, Service>()
+
+        val scope = container.createScope()
+        val serviceA = scope.provide<IService>()
+        val serviceB = scope.provide<IService>()
+        assertTrue(serviceA == serviceB)
+    }
+
+    @Test fun transientScopedInequality() {
+        val container = DependencyInjectionContainer()
+        
+        container
+            .injectTransient<ILogger, Logger>()
+            .injectTransient<IService, Service>()
+
+        val scope = container.createScope()
+        val serviceA = scope.provide<IService>()
+        val serviceB = scope.provide<IService>()
+        assertTrue(serviceA != serviceB)
     }
 }
 

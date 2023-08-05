@@ -6,71 +6,79 @@ package com.di.poc
 class ReflectionConstructor {
 
     companion object {
-        fun <TServiceType>getInstanceFromType(
-            type: java.lang.Class<TServiceType>,
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedCache: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            ): TServiceType? {
+        fun <TServiceType> getInstanceFromType(
+                type: java.lang.Class<TServiceType>,
+                singletonDependencies: MutableMap<Class<*>, Any>,
+                transientDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedCache: MutableMap<Class<*>, Any>,
+        ): TServiceType? {
 
             // Check if type is registered as a singleton dep
-            val matchingSingleton = singletonDependencies.get(type as java.lang.Class<Any>) as TServiceType
+            val matchingSingleton = singletonDependencies.get(type) as TServiceType?
+
             if (matchingSingleton != null) {
                 return matchingSingleton
             }
 
             // Check if type is registered as a transient dep
-            val matchingTransient = transientDependencies.get(type as java.lang.Class<Any>) as java.lang.Class<TServiceType>?
+            val matchingTransient =
+                    transientDependencies.get(type as Class<*>) as Class<TServiceType>?
             if (matchingTransient != null) {
-                val newInstance = ReflectionConstructor.constructFromClass(
-                    matchingTransient,
-                    singletonDependencies,
-                    transientDependencies,
-                    scopedDependencies,
-                    scopedCache)
+                val newInstance =
+                        ReflectionConstructor.constructFromClass(
+                                matchingTransient,
+                                singletonDependencies,
+                                transientDependencies,
+                                scopedDependencies,
+                                scopedCache
+                        )
                 return newInstance
             }
-            
+
             // Check if type is a cached scoped dep
-            val matchingScopedCached = scopedCache.get(type as java.lang.Class<Any>) as TServiceType
+            val matchingScopedCached = scopedCache.get(type as Class<*>) as TServiceType?
             if (matchingScopedCached != null) {
                 return matchingScopedCached
             }
 
             // Check if type is registered as a scoped dep
-            val matchingScoped = scopedDependencies.get(type as java.lang.Class<Any>) as java.lang.Class<TServiceType>?
+            val matchingScoped = scopedDependencies.get(type as Class<*>) as Class<TServiceType>?
             if (matchingScoped != null) {
-                val newInstance = ReflectionConstructor.constructFromClass(
-                    matchingScoped,
-                    singletonDependencies,
-                    transientDependencies,
-                    scopedDependencies,
-                    scopedCache)
-                    
-                scopedCache.put(type as java.lang.Class<Any>, newInstance as java.lang.Object)
+                val newInstance =
+                        ReflectionConstructor.constructFromClass(
+                                matchingScoped,
+                                singletonDependencies,
+                                transientDependencies,
+                                scopedDependencies,
+                                scopedCache
+                        )
+
+                scopedCache.put(type, newInstance as Any)
                 return newInstance
             }
             return null
         }
 
-        fun <TServiceType>constructFromClass(
-            serviceClass: java.lang.Class<TServiceType>,
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedCache: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            ): TServiceType? {
+        fun <TServiceType> constructFromClass(
+                serviceClass: java.lang.Class<TServiceType>,
+                singletonDependencies: MutableMap<Class<*>, Any>,
+                transientDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedCache: MutableMap<Class<*>, Any>,
+        ): TServiceType? {
 
-            val existingInstance = ReflectionConstructor.getInstanceFromType<TServiceType>(
-                serviceClass,
-                singletonDependencies,
-                transientDependencies,
-                scopedDependencies,
-                scopedCache)
+            val existingInstance =
+                    ReflectionConstructor.getInstanceFromType<TServiceType>(
+                            serviceClass,
+                            singletonDependencies,
+                            transientDependencies,
+                            scopedDependencies,
+                            scopedCache
+                    )
 
             if (existingInstance != null) {
-                return existingInstance as TServiceType
+                return existingInstance
             }
 
             // Retrieve constructor function
@@ -84,30 +92,34 @@ class ReflectionConstructor {
             // Prepare list of args from existing services
             val params = mutableListOf<Any>()
             for (param in primaryConstructor.getParameters()) {
-                val param = ReflectionConstructor.getInstanceFromType<Any>(
-                    param.type as java.lang.Class<Any>,
-                    singletonDependencies,
-                    transientDependencies,
-                    scopedDependencies,
-                    scopedCache)
-                params.add(param as Any)
+                val paramInstance =
+                        ReflectionConstructor.getInstanceFromType<Any>(
+                                param.type as Class<Any>,
+                                singletonDependencies,
+                                transientDependencies,
+                                scopedDependencies,
+                                scopedCache
+                        )
+                params.add(paramInstance as Any)
             }
 
             return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceType
         }
 
-        inline fun <reified TServiceType, reified TService>construct(
-            singletonDependencies: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            transientDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedDependencies: MutableMap<java.lang.Class<Any>, java.lang.Class<Any>>,
-            scopedCache: MutableMap<java.lang.Class<Any>, java.lang.Object>,
-            ): TServiceType? where TService : TServiceType {
+        inline fun <reified TServiceType, reified TService> construct(
+                singletonDependencies: MutableMap<Class<*>, Any>,
+                transientDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedCache: MutableMap<Class<*>, Any>,
+        ): TServiceType? where TService : TServiceType {
             return ReflectionConstructor.constructFromClass(
-                TService::class.java,
-                singletonDependencies,
-                transientDependencies,
-                scopedDependencies,
-                scopedCache) as TServiceType
+                    TService::class.java,
+                    singletonDependencies,
+                    transientDependencies,
+                    scopedDependencies,
+                    scopedCache
+            ) as
+                    TServiceType
         }
     }
 }

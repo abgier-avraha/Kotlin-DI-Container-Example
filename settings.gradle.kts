@@ -8,5 +8,6 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 
-rootProject.name = "kotlin-di-poc-2"
+rootProject.name = "kotlin-di-poc"
+
 include("lib")

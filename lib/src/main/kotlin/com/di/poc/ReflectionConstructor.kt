@@ -7,7 +7,7 @@ class ReflectionConstructor {
 
     companion object {
         fun <TServiceType> getInstanceFromType(
-                type: java.lang.Class<TServiceType>,
+                type: Class<TServiceType>,
                 singletonDependencies: MutableMap<Class<*>, Any>,
                 transientDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedDependencies: MutableMap<Class<*>, Class<*>>,
@@ -22,8 +22,7 @@ class ReflectionConstructor {
             }
 
             // Check if type is registered as a transient dep
-            val matchingTransient =
-                    transientDependencies.get(type as Class<*>) as Class<TServiceType>?
+            val matchingTransient = transientDependencies.get(type) as Class<TServiceType>?
             if (matchingTransient != null) {
                 val newInstance =
                         ReflectionConstructor.constructFromClass(
@@ -37,13 +36,13 @@ class ReflectionConstructor {
             }
 
             // Check if type is a cached scoped dep
-            val matchingScopedCached = scopedCache.get(type as Class<*>) as TServiceType?
+            val matchingScopedCached = scopedCache.get(type) as TServiceType?
             if (matchingScopedCached != null) {
                 return matchingScopedCached
             }
 
             // Check if type is registered as a scoped dep
-            val matchingScoped = scopedDependencies.get(type as Class<*>) as Class<TServiceType>?
+            val matchingScoped = scopedDependencies.get(type) as Class<TServiceType>?
             if (matchingScoped != null) {
                 val newInstance =
                         ReflectionConstructor.constructFromClass(
@@ -61,25 +60,12 @@ class ReflectionConstructor {
         }
 
         fun <TServiceType> constructFromClass(
-                serviceClass: java.lang.Class<TServiceType>,
+                serviceClass: Class<TServiceType>,
                 singletonDependencies: MutableMap<Class<*>, Any>,
                 transientDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedCache: MutableMap<Class<*>, Any>,
         ): TServiceType? {
-
-            val existingInstance =
-                    ReflectionConstructor.getInstanceFromType<TServiceType>(
-                            serviceClass,
-                            singletonDependencies,
-                            transientDependencies,
-                            scopedDependencies,
-                            scopedCache
-                    )
-
-            if (existingInstance != null) {
-                return existingInstance
-            }
 
             // Retrieve constructor function
             val constructors = serviceClass.getConstructors()

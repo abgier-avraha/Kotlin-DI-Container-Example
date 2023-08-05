@@ -54,7 +54,7 @@ class DependencyInjectionContainer {
                 return this
         }
 
-        fun <TServiceType> remove(serviceType: java.lang.Class<TServiceType>) {
+        fun <TServiceType> remove(serviceType: Class<TServiceType>) {
                 this.singletonDependencies =
                                 this.singletonDependencies
                                                 .filterKeys { it::class.java == serviceType }

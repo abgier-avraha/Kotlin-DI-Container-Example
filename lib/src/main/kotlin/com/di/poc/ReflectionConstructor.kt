@@ -53,7 +53,11 @@ class ReflectionConstructor {
                                 scopedCache
                         )
 
-                scopedCache.put(type, newInstance as Any)
+                if (newInstance == null) {
+                    throw Exception("Null returned when constructing scope class ${type}")
+                }
+
+                scopedCache.put(type, newInstance)
                 return newInstance
             }
             return null
@@ -86,7 +90,11 @@ class ReflectionConstructor {
                                 scopedDependencies,
                                 scopedCache
                         )
-                params.add(paramInstance as Any)
+                if (paramInstance == null) {
+                    throw Exception("Null returned when constructing parameter ${param.type}")
+                }
+
+                params.add(paramInstance)
             }
 
             return primaryConstructor.newInstance(*params.toTypedArray()) as TServiceType
@@ -104,8 +112,7 @@ class ReflectionConstructor {
                     transientDependencies,
                     scopedDependencies,
                     scopedCache
-            ) as
-                    TServiceType
+            )
         }
     }
 }

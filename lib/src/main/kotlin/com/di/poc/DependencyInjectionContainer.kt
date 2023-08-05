@@ -4,73 +4,80 @@
 package com.di.poc
 
 // TODO: how could this fit in a framework with lifecycles for instances?
+// -> Inject Deps
+// -> Inject Controllers
+// -> Request In
+// -> container.createScope()
+// -> scope.provide<Controller>()
+// -> pass request to controller method
+// -> Response out
+// -> Garbage collect or dispose scope?
 
 class DependencyInjectionContainer {
-        // Key is class and vaue is instance
-        var singletonDependencies = mutableMapOf<Class<*>, Any>()
+    // Key is class and value is instance
+    var singletonDependencies = mutableMapOf<Class<*>, Any>()
 
-        // Key is class and value is a factory
-        var transientDependencies = mutableMapOf<Class<*>, Class<*>>()
+    // Key is class (reified interface) and value is a class
+    var transientDependencies = mutableMapOf<Class<*>, Class<*>>()
 
-        // Key is class and value is a factory
-        var scopedDependencies = mutableMapOf<Class<*>, Class<*>>()
+    // Key is class (reified interface) and value is a class
+    var scopedDependencies = mutableMapOf<Class<*>, Class<*>>()
 
-        fun createScope(): ServiceScope {
-                return ServiceScope(this)
+    fun createScope(): ServiceScope {
+        return ServiceScope(this)
+    }
+
+    inline fun <reified TServiceType> injectSingleton(instance: Any): DependencyInjectionContainer {
+        this.singletonDependencies.put(TServiceType::class.java, instance)
+        return this
+    }
+
+    inline fun <reified TServiceType, reified TService> injectSingleton():
+            DependencyInjectionContainer where TService : TServiceType {
+        // Construct singleton from generic arg
+        // Singletons can not contain transient or scoped dependencies
+        val instance =
+                ReflectionConstructor.construct<TServiceType, TService>(
+                        this.singletonDependencies,
+                        mutableMapOf<Class<*>, Class<*>>(),
+                        mutableMapOf<Class<*>, Class<*>>(),
+                        mutableMapOf<Class<*>, Any>()
+                )
+
+        if (instance == null) {
+            throw Exception("Null returned when constructing ${TService::class.java}")
         }
+        this.singletonDependencies.put(TServiceType::class.java, instance)
+        return this
+    }
 
-        inline fun <reified TServiceType> injectSingleton(
-                        instance: Any
-        ): DependencyInjectionContainer {
-                this.singletonDependencies.put(TServiceType::class.java, instance)
-                return this
-        }
+    inline fun <reified TServiceType, reified TService> injectTransient():
+            DependencyInjectionContainer {
+        this.transientDependencies.put(TServiceType::class.java, TService::class.java)
+        return this
+    }
 
-        inline fun <reified TServiceType, reified TService> injectSingleton():
-                        DependencyInjectionContainer where TService : TServiceType {
-                // Construct singleton from generic arg
-                // Singletons can not contain transient or scoped dependencies
-                val instance =
-                                ReflectionConstructor.construct<TServiceType, TService>(
-                                                this.singletonDependencies,
-                                                mutableMapOf<Class<*>, Class<*>>(),
-                                                mutableMapOf<Class<*>, Class<*>>(),
-                                                mutableMapOf<Class<*>, Any>()
-                                )
+    inline fun <reified TServiceType, reified TService> injectScoped():
+            DependencyInjectionContainer {
+        this.scopedDependencies.put(TServiceType::class.java, TService::class.java)
+        return this
+    }
 
-                this.singletonDependencies.put(TServiceType::class.java, instance as Any)
-                return this
-        }
+    fun <TServiceType> remove(serviceType: Class<TServiceType>) {
+        this.singletonDependencies =
+                this.singletonDependencies
+                        .filterKeys { it::class.java == serviceType }
+                        .toMutableMap()
+        this.transientDependencies =
+                this.transientDependencies
+                        .filterKeys { it::class.java == serviceType }
+                        .toMutableMap()
+        this.scopedDependencies =
+                this.scopedDependencies.filterKeys { it::class.java == serviceType }.toMutableMap()
+    }
 
-        inline fun <reified TServiceType, reified TService> injectTransient():
-                        DependencyInjectionContainer {
-                this.transientDependencies.put(TServiceType::class.java, TService::class.java)
-                return this
-        }
-
-        inline fun <reified TServiceType, reified TService> injectScoped():
-                        DependencyInjectionContainer {
-                this.scopedDependencies.put(TServiceType::class.java, TService::class.java)
-                return this
-        }
-
-        fun <TServiceType> remove(serviceType: Class<TServiceType>) {
-                this.singletonDependencies =
-                                this.singletonDependencies
-                                                .filterKeys { it::class.java == serviceType }
-                                                .toMutableMap()
-                this.transientDependencies =
-                                this.transientDependencies
-                                                .filterKeys { it::class.java == serviceType }
-                                                .toMutableMap()
-                this.scopedDependencies =
-                                this.scopedDependencies
-                                                .filterKeys { it::class.java == serviceType }
-                                                .toMutableMap()
-        }
-
-        inline fun <reified TServiceType> remove() {
-                val serviceType = TServiceType::class.java
-                this.remove(serviceType)
-        }
+    inline fun <reified TServiceType> remove() {
+        val serviceType = TServiceType::class.java
+        this.remove(serviceType)
+    }
 }

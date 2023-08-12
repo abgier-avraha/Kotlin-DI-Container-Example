@@ -18,9 +18,8 @@ class RandomStringsServiceTest {
     container.injectSingleton<IRandomProvider>(TestRandomProvider("<random>"))
 
     // Act
-    val scope = container.createScope()
-    val service = scope.provide<IRandomStringsService>()
-    val res = service.GetRandomStrings()
+    val client = container.createClient<IRandomStringsService>()
+    val res = client.GetRandomStrings()
 
     // Assert
     assertEquals(listOf("<random>", "<random>", "<random>"), res)
@@ -37,4 +36,9 @@ class TestRandomProvider : IRandomProvider {
   override fun CreateRandomString(): String {
     return this.value
   }
+}
+
+inline fun <reified T> DependencyInjectionContainer.createClient(): T {
+  val scope = this.createScope()
+  return scope.provide<T>()
 }

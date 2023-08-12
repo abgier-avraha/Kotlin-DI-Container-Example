@@ -3,11 +3,33 @@
  */
 package com.di.poc
 
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.assertNotEquals
 
 class DependencyInjectionContainerTest {
+
+    private var outContent = ByteArrayOutputStream()
+    private var errContent = ByteArrayOutputStream()
+    private var originalOut = System.out
+    private var originalErr = System.err
+
+    @BeforeTest
+    fun setUpStreams() {
+        System.setOut(PrintStream(this.outContent))
+        System.setErr(PrintStream(errContent))
+    }
+
+    @AfterTest
+    fun restoreStreams() {
+        System.setOut(originalOut)
+        System.setErr(originalErr)
+    }
 
     @Test
     fun canInjectAndProvide() {
@@ -18,11 +40,11 @@ class DependencyInjectionContainerTest {
         val scope = container.createScope()
         val service = scope.provide<IService>()
 
-        assertTrue(service.someMethod() == "Service")
+        assertEquals("Service", service.someMethod())
         service.logger.configure(service)
 
-        // TODO: assertion and stdout
         service.logger.info("Test")
+        assertEquals("com.di.poc.Service::Test\n", this.outContent.toString())
     }
 
     @Test
@@ -37,7 +59,7 @@ class DependencyInjectionContainerTest {
         val scope = container.createScope()
         val service = scope.provide<IService>()
 
-        assertTrue(service.someMethod() == "SomeService")
+        assertEquals("SomeService", service.someMethod())
     }
 
     @Test
@@ -64,7 +86,7 @@ class DependencyInjectionContainerTest {
         val scope = container.createScope()
         val serviceA = scope.provide<Dummy>()
         val serviceB = scope.provide<Dummy>()
-        assertTrue(serviceA == serviceB)
+        assertEquals(serviceA, serviceB)
     }
 
     @Test
@@ -76,7 +98,7 @@ class DependencyInjectionContainerTest {
         val scope = container.createScope()
         val serviceA = scope.provide<IService>()
         val serviceB = scope.provide<IService>()
-        assertTrue(serviceA == serviceB)
+        assertEquals(serviceA, serviceB)
     }
 
     @Test
@@ -88,7 +110,7 @@ class DependencyInjectionContainerTest {
         val scope = container.createScope()
         val serviceA = scope.provide<IService>()
         val serviceB = scope.provide<IService>()
-        assertTrue(serviceA != serviceB)
+        assertNotEquals(serviceA, serviceB)
     }
 }
 

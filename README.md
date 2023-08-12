@@ -10,13 +10,24 @@ Refer to `lib/src/test/kotlin/com/di/poc/DependencyInjectionContainerTest.kt` fo
 fun main() {
     val container = DependencyInjectionContainer()
     
+    // Inject your classes based on the lifecycle you want
     container
+        .injectSingleton<IJsonFormatter, JsonFormatter>()
         .injectTransient<ILogger, Logger>()
         .injectScoped<IService, Service>()
 
+    // Create a scope
     val scope = container.createScope()
+
+    // Fetch an instance of a class from the scope
     val service = scope.provide<IService>()
-    service.logger.configure(service)
-    service.logSomething("Test")
+
+    service.executeSomeMethod()
 }
+```
+
+## Run Tests
+
+```sh
+./gradlew test --info
 ```

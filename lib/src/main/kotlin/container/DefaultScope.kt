@@ -1,7 +1,6 @@
-package com.di.poc
+package container
 
-class DefaultScope
-{
+class DefaultScope {
   companion object {
     val scope = DependencyInjectionContainer().createScope()
   }

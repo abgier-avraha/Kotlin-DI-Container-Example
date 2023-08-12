@@ -1,4 +1,4 @@
-package com.di.poc
+package container
 
 class ServiceScope {
     public val container: DependencyInjectionContainer

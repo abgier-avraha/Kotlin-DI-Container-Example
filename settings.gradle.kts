@@ -11,3 +11,5 @@
 rootProject.name = "kotlin-di-poc"
 
 include("lib")
+
+include("example")

@@ -10,11 +10,12 @@ import example.utils.IRandomProvider
 import example.utils.createClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.coroutines.test.runTest
 
 class RandomStringsServiceTest {
 
   @Test
-  fun CanGetRandomStrings() {
+  fun canGetRandomStrings() = runTest {
     // Arrange
     val container =
         DependencyInjectionContainer()

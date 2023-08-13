@@ -6,16 +6,11 @@ import example.services.RandomStringsService
 import example.utils.IRandomProvider
 import example.utils.RandomProvider
 
+val rootContainer = DependencyInjectionContainer()
+
 fun main() {
-  // Create and populate container
-  val container = DependencyInjectionContainer().injectServices()
-
-  // Use http context accessor
-  container.injectHttpContextAccessor()
-
-  // Start server
-  val server = createServer(container)
-  server.start()
+  rootContainer.injectHttpContextAccessor().injectServices()
+  createServer().start()
 }
 
 fun DependencyInjectionContainer.injectServices(): DependencyInjectionContainer {

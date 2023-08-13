@@ -27,15 +27,17 @@ repositories {
 dependencies {
     // Align versions of all Kotlin components
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
-    // Http4k
-    implementation(platform("org.http4k:http4k-bom:5.6.3.0"))
-    implementation("org.http4k:http4k-core")
-    implementation("org.http4k:http4k-server-undertow")
-    implementation("org.http4k:http4k-client-apache")
+    // Ktor
+    implementation("io.ktor:ktor-server-core:2.3.3")
+    implementation("io.ktor:ktor-server-cio:2.3.3")
+    implementation("io.ktor:ktor-server-status-pages:2.3.3")
+    implementation("io.ktor:ktor-server-default-headers:2.3.3")
+    testImplementation("io.ktor:ktor-server-test-host:2.3.3")
 
     // JSON serialiaiser
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0-RC")

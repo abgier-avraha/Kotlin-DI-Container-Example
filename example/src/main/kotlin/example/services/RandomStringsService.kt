@@ -4,7 +4,7 @@ import example.IHttpContextAccessor
 import example.utils.IRandomProvider
 
 interface IRandomStringsService {
-  fun GetRandomStrings(): List<String>
+  suspend fun GetRandomStrings(): List<String>
 }
 
 class RandomStringsService : IRandomStringsService {
@@ -17,8 +17,9 @@ class RandomStringsService : IRandomStringsService {
     this.httpContextAccessor = httpContextAccessor
   }
 
-  override fun GetRandomStrings(): List<String> {
-    println(httpContextAccessor.context.request.body)
+  // TODO: use async interfaces
+  override suspend fun GetRandomStrings(): List<String> {
+    println(httpContextAccessor.context.request.paramaters)
 
     return listOf(
         this.randomProvider.CreateRandomString(),

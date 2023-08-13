@@ -12,12 +12,15 @@ class DependencyInjectionContainer {
 
     // Key is class (reified interface) and value is a class
     var scopedDependencies = mutableMapOf<Class<*>, Class<*>>()
+    var scopedDependencyFactories = mutableMapOf<Class<*>, () -> Any>()
 
     fun createScope(): ServiceScope {
         return ServiceScope(this)
     }
 
-    inline fun <reified TServiceType> injectSingleton(instance: Any): DependencyInjectionContainer {
+    inline fun <reified TServiceType> injectSingleton(
+            instance: TServiceType
+    ): DependencyInjectionContainer where TServiceType : Any {
         this.singletonDependencies.put(TServiceType::class.java, instance)
         return this
     }
@@ -31,7 +34,8 @@ class DependencyInjectionContainer {
                         this.singletonDependencies,
                         mutableMapOf<Class<*>, Class<*>>(),
                         mutableMapOf<Class<*>, Class<*>>(),
-                        mutableMapOf<Class<*>, Any>()
+                        mutableMapOf<Class<*>, () -> Any>(),
+                        mutableMapOf<Class<*>, Any>(),
                 )
 
         if (instance == null) {
@@ -53,6 +57,13 @@ class DependencyInjectionContainer {
         return this
     }
 
+    inline fun <reified TServiceType> injectScoped(
+            noinline factory: () -> TServiceType
+    ): DependencyInjectionContainer where TServiceType : Any {
+        this.scopedDependencyFactories.put(TServiceType::class.java, factory)
+        return this
+    }
+
     fun <TServiceType> remove(serviceType: Class<TServiceType>) {
         this.singletonDependencies =
                 this.singletonDependencies
@@ -64,6 +75,10 @@ class DependencyInjectionContainer {
                         .toMutableMap()
         this.scopedDependencies =
                 this.scopedDependencies.filterKeys { it::class.java == serviceType }.toMutableMap()
+        this.scopedDependencyFactories =
+                this.scopedDependencyFactories
+                        .filterKeys { it::class.java == serviceType }
+                        .toMutableMap()
     }
 
     inline fun <reified TServiceType> remove() {

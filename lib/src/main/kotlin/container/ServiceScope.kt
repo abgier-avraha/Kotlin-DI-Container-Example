@@ -8,7 +8,7 @@ class ServiceScope {
         this.container = container
     }
 
-    inline fun <reified TServiceType> provide(): TServiceType {
+    inline fun <reified TServiceType> provide(): TServiceType where TServiceType : Any {
         val serviceType = TServiceType::class.java
 
         val instance =
@@ -17,6 +17,7 @@ class ServiceScope {
                         this.container.singletonDependencies,
                         this.container.transientDependencies,
                         this.container.scopedDependencies,
+                        this.container.scopedDependencyFactories,
                         this.scopedCache
                 )
 

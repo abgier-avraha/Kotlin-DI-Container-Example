@@ -38,7 +38,7 @@ class TestRandomProvider : IRandomProvider {
   }
 }
 
-inline fun <reified T> DependencyInjectionContainer.createClient(): T {
+inline fun <reified T> DependencyInjectionContainer.createClient(): T where T : Any {
   val scope = this.createScope()
   return scope.provide<T>()
 }

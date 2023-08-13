@@ -10,6 +10,9 @@ fun main() {
   // Create and populate container
   val container = DependencyInjectionContainer().injectServices()
 
+  // Use http context accessor
+  container.injectHttpContextAccessor()
+
   // Start server
   val server = createServer(container)
   server.start()

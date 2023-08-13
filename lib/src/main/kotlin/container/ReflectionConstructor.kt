@@ -11,8 +11,9 @@ class ReflectionConstructor {
                 singletonDependencies: MutableMap<Class<*>, Any>,
                 transientDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencyFactories: MutableMap<Class<*>, () -> Any>,
                 scopedCache: MutableMap<Class<*>, Any>,
-        ): TServiceType? {
+        ): TServiceType? where TServiceType : Any {
 
             // Check if type is registered as a singleton dep
             val matchingSingleton = singletonDependencies.get(type) as TServiceType?
@@ -30,6 +31,7 @@ class ReflectionConstructor {
                                 singletonDependencies,
                                 transientDependencies,
                                 scopedDependencies,
+                                scopedDependencyFactories,
                                 scopedCache
                         )
                 return newInstance
@@ -50,6 +52,7 @@ class ReflectionConstructor {
                                 singletonDependencies,
                                 transientDependencies,
                                 scopedDependencies,
+                                scopedDependencyFactories,
                                 scopedCache
                         )
 
@@ -57,6 +60,17 @@ class ReflectionConstructor {
                     throw Exception("Null returned when constructing scope class ${type}")
                 }
 
+                // Add to scoped cache
+                scopedCache.put(type, newInstance)
+                return newInstance
+            }
+
+            // Check if type is registered as a scoped dep factory
+            val matchingScopedFactory = scopedDependencyFactories.get(type)
+            if (matchingScopedFactory != null) {
+                val newInstance = matchingScopedFactory() as TServiceType
+
+                // Add to scoped cache
                 scopedCache.put(type, newInstance)
                 return newInstance
             }
@@ -68,6 +82,7 @@ class ReflectionConstructor {
                 singletonDependencies: MutableMap<Class<*>, Any>,
                 transientDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencyFactories: MutableMap<Class<*>, () -> Any>,
                 scopedCache: MutableMap<Class<*>, Any>,
         ): TServiceType? {
 
@@ -83,11 +98,12 @@ class ReflectionConstructor {
             val params = mutableListOf<Any>()
             for (param in primaryConstructor.getParameters()) {
                 val paramInstance =
-                        ReflectionConstructor.getInstanceFromType<Any>(
-                                param.type as Class<Any>,
+                        ReflectionConstructor.getInstanceFromType(
+                                param.type,
                                 singletonDependencies,
                                 transientDependencies,
                                 scopedDependencies,
+                                scopedDependencyFactories,
                                 scopedCache
                         )
                 if (paramInstance == null) {
@@ -104,6 +120,7 @@ class ReflectionConstructor {
                 singletonDependencies: MutableMap<Class<*>, Any>,
                 transientDependencies: MutableMap<Class<*>, Class<*>>,
                 scopedDependencies: MutableMap<Class<*>, Class<*>>,
+                scopedDependencyFactories: MutableMap<Class<*>, () -> Any>,
                 scopedCache: MutableMap<Class<*>, Any>,
         ): TServiceType? where TService : TServiceType {
             return ReflectionConstructor.constructFromClass(
@@ -111,6 +128,7 @@ class ReflectionConstructor {
                     singletonDependencies,
                     transientDependencies,
                     scopedDependencies,
+                    scopedDependencyFactories,
                     scopedCache
             )
         }

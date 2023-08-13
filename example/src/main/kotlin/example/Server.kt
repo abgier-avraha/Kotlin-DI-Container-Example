@@ -2,7 +2,6 @@ package example
 
 import container.DependencyInjectionContainer
 import example.services.IRandomStringsService
-import java.io.BufferedReader
 import kotlinx.serialization.encodeToString as plainJsonFormatter
 import kotlinx.serialization.json.Json
 import org.http4k.core.Method
@@ -23,8 +22,7 @@ fun createServer(container: DependencyInjectionContainer): Http4kServer {
               Method.GET to
               {
                 // Create new context and update reference to current server context
-                val body = it.body.stream.bufferedReader().use(BufferedReader::readText)
-                StaticContext.latestContext = ServerContext(ServerRequest(body), null)
+                StaticContext.latestContext = ServerContext(ServerRequest(it.bodyString()), null)
 
                 // Create new scope and provide service
                 val scope = container.createScope()

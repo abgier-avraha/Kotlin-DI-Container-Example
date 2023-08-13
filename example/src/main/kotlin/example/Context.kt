@@ -22,9 +22,8 @@ fun DependencyInjectionContainer.injectHttpContextAccessor(): DependencyInjectio
 
 // TODO:
 // This just holds a reference to the latest http context
-// It's safe because the server is single threaded
-// Rewrite to support mulithreading with 1 request per thread
-// Brainstorm...
+// It's safe because the server is synchronous and single threaded
+// Brainstorm ways to support mulithreading with 1 request per thread
 class StaticContext {
   companion object {
     var latestContext = ServerContext(ServerRequest(""), null)

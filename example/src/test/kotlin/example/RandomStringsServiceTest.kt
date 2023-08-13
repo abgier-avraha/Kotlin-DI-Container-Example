@@ -4,8 +4,10 @@
 package example
 
 import container.DependencyInjectionContainer
+import example.mocks.MockRandomProvider
 import example.services.IRandomStringsService
 import example.utils.IRandomProvider
+import example.utils.createClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -14,8 +16,11 @@ class RandomStringsServiceTest {
   @Test
   fun CanGetRandomStrings() {
     // Arrange
-    val container = DependencyInjectionContainer().injectServices()
-    container.injectSingleton<IRandomProvider>(TestRandomProvider("<random>"))
+    val container =
+        DependencyInjectionContainer()
+            .injectServices()
+            .injectHttpContextAccessor()
+            .injectSingleton<IRandomProvider>(MockRandomProvider("<random>"))
 
     // Act
     val client = container.createClient<IRandomStringsService>()
@@ -24,21 +29,4 @@ class RandomStringsServiceTest {
     // Assert
     assertEquals(listOf("<random>", "<random>", "<random>"), res)
   }
-}
-
-class TestRandomProvider : IRandomProvider {
-  private val value: String
-
-  constructor(value: String) {
-    this.value = value
-  }
-
-  override fun CreateRandomString(): String {
-    return this.value
-  }
-}
-
-inline fun <reified T> DependencyInjectionContainer.createClient(): T where T : Any {
-  val scope = this.createScope()
-  return scope.provide<T>()
 }

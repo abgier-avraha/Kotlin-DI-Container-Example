@@ -3,11 +3,15 @@ package example
 import container.DependencyInjectionContainer
 
 interface IHttpContextAccessor {
-  val context: ServerContext
+  var context: ServerContext
+
+  fun update(context: ServerContext) {
+    this.context = context
+  }
 }
 
 class HttpContextAccessor : IHttpContextAccessor {
-  override val context: ServerContext
+  override var context: ServerContext
 
   constructor(context: ServerContext) {
     this.context = context
@@ -16,18 +20,8 @@ class HttpContextAccessor : IHttpContextAccessor {
 
 fun DependencyInjectionContainer.injectHttpContextAccessor(): DependencyInjectionContainer {
   return this.injectScoped<IHttpContextAccessor>({
-    HttpContextAccessor(StaticContext.latestContext)
+    HttpContextAccessor(ServerContext(ServerRequest("", mapOf()), null))
   })
-}
-
-// TODO: This is ugly and potentially not safe
-// This just holds a reference to the latest http context for the injector function
-// It's not safe because multiple request handlers could modify this static var at the same time???
-// Brainstorm ways to support mulithreading with 1 request per thread
-class StaticContext {
-  companion object {
-    var latestContext = ServerContext(ServerRequest("", mapOf()), null)
-  }
 }
 
 enum class Claims(val claimString: String) {
@@ -42,6 +36,6 @@ data class Identity(val claims: Map<String, String?>) {
 
 data class Principal(val identity: Identity) {}
 
-data class ServerRequest(val body: String, val paramaters: Map<String, List<String>>) {}
+data class ServerRequest(val body: String, val paramaters: Map<String, String?>) {}
 
 data class ServerContext(val request: ServerRequest, val user: Principal?) {}

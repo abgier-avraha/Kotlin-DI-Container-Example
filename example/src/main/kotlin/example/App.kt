@@ -10,7 +10,7 @@ val rootContainer = DependencyInjectionContainer()
 
 fun main() {
   rootContainer.injectHttpContextAccessor().injectServices()
-  createServer().start()
+  createServer().start(wait = true)
 }
 
 fun DependencyInjectionContainer.injectServices(): DependencyInjectionContainer {

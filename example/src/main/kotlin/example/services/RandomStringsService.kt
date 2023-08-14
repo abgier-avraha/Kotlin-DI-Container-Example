@@ -19,6 +19,8 @@ class RandomStringsService : IRandomStringsService {
 
   // TODO: use async interfaces
   override suspend fun GetRandomStrings(): List<String> {
+    // TODO: create logger middleware
+    println(httpContextAccessor.context.request.body)
     println(httpContextAccessor.context.request.paramaters)
 
     return listOf(
